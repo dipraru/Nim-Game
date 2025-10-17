@@ -40,23 +40,22 @@ export default function Game({ players = [], pilesCount = 3, matchMinutes = 6, o
     // Register blast for animation. topIndex 0 = topmost bomb, so removed bombs = count - topIndex
     setBlasts((b) => ({ ...b, [pileIndex]: topIndex }))
 
-    // In online mode, send move to server (server will broadcast room_update)
+    // Local mode: update locally after animation
     const removed = topIndex + 1 // remove clicked bomb and all bombs above it
-    if (mode === 'online' && socket && roomId) {
-      socket.emit('make_move', { roomId, pileIndex, take: removed })
-      // locally mark blast for UX while server confirms
-      setBlasts((b) => ({ ...b, [pileIndex]: topIndex }))
-      setTimeout(() => {
-        setBlasts((b) => { const nb = { ...b }; delete nb[pileIndex]; return nb })
-      }, 520)
-      return
-    }
-
-    // Local mode: update locally
     setTimeout(() => {
       setPiles((prev) => {
         const next = [...prev]
         next[pileIndex] = Math.max(0, prev[pileIndex] - removed)
+
+        const allZero = next.every((p) => p === 0)
+        if (allZero) {
+          setStatus('finished')
+          // winner is the player who just moved (current turn at time of click)
+          setWinner(turnRef.current)
+        } else {
+          setTurn((t) => (t + 1) % 2)
+        }
+
         return next
       })
 
@@ -65,20 +64,6 @@ export default function Game({ players = [], pilesCount = 3, matchMinutes = 6, o
         delete nb[pileIndex]
         return nb
       })
-
-      // Check win
-      setTimeout(() => {
-        setPiles((curr) => {
-          const allZero = curr.every((p) => p === 0)
-          if (allZero) {
-            setStatus('finished')
-            setWinner(turn)
-          } else {
-            setTurn((t) => (t + 1) % 2)
-          }
-          return curr
-        })
-      }, 50)
     }, 520) // match animation duration in CSS for particles
   }
 
