@@ -13,4 +13,4 @@ echo "Running frontend build..."
 npm --prefix frontend run build
 echo "Listing frontend dist (after build):"
 ls -la frontend/dist || true
-echo "=== vercel-build.sh finished ==="
+echo "=== vercel-build.sh finished ===" 

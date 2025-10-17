@@ -16,7 +16,7 @@ function generateUniquePiles(count, min = 4, max = 18) {
   return Array.from(set)
 }
 
-export default function Game({ mode = 'local', socket = null, roomId = null, players = [], pilesCount = 3, matchMinutes = 6, onReset }) {
+export default function Game({ players = [], pilesCount = 3, matchMinutes = 6, onReset }) {
   const [piles, setPiles] = useState(() => generateUniquePiles(pilesCount, 4, 18))
   const [turn, setTurn] = useState(0) // 0 = players[0], 1 = players[1]
   const [status, setStatus] = useState('playing')
@@ -40,23 +40,22 @@ export default function Game({ mode = 'local', socket = null, roomId = null, pla
     // Register blast for animation. topIndex 0 = topmost bomb, so removed bombs = count - topIndex
     setBlasts((b) => ({ ...b, [pileIndex]: topIndex }))
 
-    // In online mode, send move to server (server will broadcast room_update)
+    // Local mode: update locally after animation
     const removed = topIndex + 1 // remove clicked bomb and all bombs above it
-    if (mode === 'online' && socket && roomId) {
-      socket.emit('make_move', { roomId, pileIndex, take: removed })
-      // locally mark blast for UX while server confirms
-      setBlasts((b) => ({ ...b, [pileIndex]: topIndex }))
-      setTimeout(() => {
-        setBlasts((b) => { const nb = { ...b }; delete nb[pileIndex]; return nb })
-      }, 520)
-      return
-    }
-
-    // Local mode: update locally
     setTimeout(() => {
       setPiles((prev) => {
         const next = [...prev]
         next[pileIndex] = Math.max(0, prev[pileIndex] - removed)
+
+        const allZero = next.every((p) => p === 0)
+        if (allZero) {
+          setStatus('finished')
+          // winner is the player who just moved (current turn at time of click)
+          setWinner(turnRef.current)
+        } else {
+          setTurn((t) => (t + 1) % 2)
+        }
+
         return next
       })
 
@@ -65,20 +64,6 @@ export default function Game({ mode = 'local', socket = null, roomId = null, pla
         delete nb[pileIndex]
         return nb
       })
-
-      // Check win
-      setTimeout(() => {
-        setPiles((curr) => {
-          const allZero = curr.every((p) => p === 0)
-          if (allZero) {
-            setStatus('finished')
-            setWinner(turn)
-          } else {
-            setTurn((t) => (t + 1) % 2)
-          }
-          return curr
-        })
-      }, 50)
     }, 520) // match animation duration in CSS for particles
   }
 
@@ -111,34 +96,7 @@ export default function Game({ mode = 'local', socket = null, roomId = null, pla
     turnRef.current = turn
   }, [turn])
 
-  // socket listeners for online play
-  useEffect(() => {
-    if (mode !== 'online' || !socket) return
-    const onRoom = ({ roomId, room }) => {
-      if (!room) return
-      // sync local state with server room
-      if (room.piles) setPiles(room.piles)
-      if (typeof room.currentTurn === 'number') setTurn(room.currentTurn % (room.turnOrder?.length || 2))
-      if (room.status) setStatus(room.status)
-      if (room.winner) setWinner(room.winner === socket.id ? 0 : 1)
-      // update players list
-      const playerNames = Object.values(room.players || {}).map(p => p.name || 'Player')
-      // ensure players has two entries
-      if (playerNames.length === 1) playerNames.push('Waiting...')
-      // we do not overwrite players prop directly; update only if local array is placeholder
-      // set players if empty or placeholder
-    }
-    const onError = (msg) => {
-      console.warn('server error:', msg)
-      alert(msg)
-    }
-    socket.on('room_update', onRoom)
-    socket.on('error_msg', onError)
-    return () => {
-      socket.off('room_update', onRoom)
-      socket.off('error_msg', onError)
-    }
-  }, [mode, socket])
+  // no online socket logic in local-only mode
 
   // Tick timer while playing. Use refs to avoid stale closures and ensure interval
   // starts immediately on status change or restart.
@@ -193,6 +151,15 @@ export default function Game({ mode = 'local', socket = null, roomId = null, pla
 
   return (
     <div className="card game">
+      {/* fixed player panels */}
+      <div className={`player-fixed left ${turn === 0 ? 'current' : ''}`} aria-hidden>
+        <div className="player-name">{players[0] || 'Player 1'}</div>
+        <div className={`clock ${clocks[0] <= 10000 ? 'low' : ''}`}>{fmt(clocks[0])}</div>
+      </div>
+      <div className={`player-fixed right ${turn === 1 ? 'current' : ''}`} aria-hidden>
+        <div className="player-name">{players[1] || 'Player 2'}</div>
+        <div className={`clock ${clocks[1] <= 10000 ? 'low' : ''}`}>{fmt(clocks[1])}</div>
+      </div>
       <div className="header">
         <div>
           <h2>NIM — Local Play</h2>
