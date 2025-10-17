@@ -22,6 +22,8 @@ export default function Game({ mode = 'local', socket = null, roomId = null, pla
   const [status, setStatus] = useState('playing')
   const [winner, setWinner] = useState(null)
   const [blasts, setBlasts] = useState({}) // { pileIndex: clickedTopIndex }
+  const [playerNames, setPlayerNames] = useState(players)
+  const [myIndex, setMyIndex] = useState(null)
   // clocks in milliseconds per player
   const perPlayerMs = Math.max(1, (Number(matchMinutes) || 6) * 60 * 1000 / 2)
   const [clocks, setClocks] = useState(() => [perPlayerMs, perPlayerMs])
@@ -32,7 +34,12 @@ export default function Game({ mode = 'local', socket = null, roomId = null, pla
 
   // clickedTopIndex: index from top (0 = topmost). Clicking a bomb blasts that bomb and all bombs above it (i.e. the top part).
   const clickBomb = (pileIndex, topIndex) => {
+    // only allow click when playing
     if (status !== 'playing') return
+    if (mode === 'online' && socket) {
+      // check if it's our turn
+      const turnPlayerId = (typeof turn === 'number' && socket && socket.id && (turn !== null)) ? null : null
+    }
     if (pileIndex < 0 || pileIndex >= piles.length) return
     const count = piles[pileIndex]
     if (topIndex < 0 || topIndex >= count) return
@@ -43,6 +50,10 @@ export default function Game({ mode = 'local', socket = null, roomId = null, pla
     // In online mode, send move to server (server will broadcast room_update)
     const removed = topIndex + 1 // remove clicked bomb and all bombs above it
     if (mode === 'online' && socket && roomId) {
+      // disallow if not our turn
+      if (myIndex === null) return
+      const shouldBe = socket && socket.id
+      // emit move
       socket.emit('make_move', { roomId, pileIndex, take: removed })
       // locally mark blast for UX while server confirms
       setBlasts((b) => ({ ...b, [pileIndex]: topIndex }))
@@ -125,9 +136,13 @@ export default function Game({ mode = 'local', socket = null, roomId = null, pla
         const idx = room.turnOrder?.indexOf(room.winner)
         setWinner(typeof idx === 'number' && idx >= 0 ? idx : null)
       }
-      // update players list based on turnOrder
-      const playerNames = (room.turnOrder || []).map(id => (room.players && room.players[id] && room.players[id].name) || 'Player')
-      if (playerNames.length === 1) playerNames.push('Waiting...')
+  // update players list based on turnOrder
+  const playerNames = (room.turnOrder || []).map(id => (room.players && room.players[id] && room.players[id].name) || 'Player')
+  if (playerNames.length === 1) playerNames.push('Waiting...')
+  setPlayerNames(playerNames)
+  // set my index in turnOrder if present
+  const myIdx = room.turnOrder ? room.turnOrder.indexOf(socket.id) : -1
+  setMyIndex(myIdx >= 0 ? myIdx : null)
       // update displayed player names by mutating DOM via state where appropriate
       // (we'll rely on props.players passed from App, but if not present, set local fallback)
       // no direct state for players here; parent `App` maintains player list
@@ -199,7 +214,7 @@ export default function Game({ mode = 'local', socket = null, roomId = null, pla
     <div className="card game">
       <div className="header">
         <div>
-          <h2>NIM — Local Play</h2>
+          <h2>NIM — {mode === 'online' ? `Online Room${roomId ? `: ${roomId}` : ''}` : 'Local Play'}</h2>
           <div className="subtitle">Click a bomb to blast it and all bombs above it</div>
         </div>
         <div className="controls-top">
@@ -210,11 +225,11 @@ export default function Game({ mode = 'local', socket = null, roomId = null, pla
 
       <div className="players">
         <div className={turn === 0 ? 'player current' : 'player'}>
-          <div className="player-name">{players[0]}{winner === 0 ? ' (winner)' : ''}</div>
+          <div className="player-name">{(playerNames[0] || players[0])}{winner === 0 ? ' (winner)' : ''}{mode === 'online' && turn === 0 ? (myIndex === 0 ? ' ← you' : '') : ''}</div>
           <div className={`clock ${clocks[0] <= 10000 ? 'low' : ''}`}>{fmt(clocks[0])}</div>
         </div>
         <div className={turn === 1 ? 'player current' : 'player'}>
-          <div className="player-name">{players[1]}{winner === 1 ? ' (winner)' : ''}</div>
+          <div className="player-name">{(playerNames[1] || players[1])}{winner === 1 ? ' (winner)' : ''}{mode === 'online' && turn === 1 ? (myIndex === 1 ? ' ← you' : '') : ''}</div>
           <div className={`clock ${clocks[1] <= 10000 ? 'low' : ''}`}>{fmt(clocks[1])}</div>
         </div>
       </div>
