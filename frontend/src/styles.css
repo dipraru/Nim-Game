@@ -21,6 +21,34 @@ button{padding:8px 12px;border-radius:8px;border:none;cursor:pointer}
 .players{display:flex;gap:8px;margin:12px 0}
 .player{padding:8px 10px;border-radius:8px;background:rgba(255,255,255,0.02)}
 .player.current{outline:2px solid var(--accent)}
+/* fixed player panels shown on left and right middle of the viewport */
+.player-fixed{
+  position:fixed;
+  top:50%;
+  transform:translateY(-50%);
+  background:linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01));
+  border:1px solid rgba(255,255,255,0.04);
+  padding:12px 14px;
+  border-radius:10px;
+  z-index:80;
+  min-width:160px;
+  display:flex;
+  flex-direction:column;
+  align-items:flex-start;
+  gap:6px;
+}
+.player-fixed.left{ left:18px }
+.player-fixed.right{ right:18px; align-items:flex-end }
+.player-fixed .player-name{ font-weight:700 }
+.player-fixed .clock{ font-size:14px; color:var(--muted) }
+.player-fixed.current{ box-shadow:0 8px 20px rgba(96,165,250,0.12); outline:2px solid var(--accent) }
+
+@media (max-width: 720px){
+  /* on small screens keep panels near top corners instead of middle */
+  .player-fixed{ top:12px; transform:none; min-width:120px }
+  .player-fixed.left{ left:12px }
+  .player-fixed.right{ right:12px }
+}
 .piles{display:flex;gap:12px}
 .pile{flex:1;padding:12px;background:rgba(0,0,0,0.12);border-radius:8px}
 .pile-title{font-weight:600;margin-bottom:8px}

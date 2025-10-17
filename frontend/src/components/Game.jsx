@@ -197,6 +197,15 @@ export default function Game({ mode = 'local', socket = null, roomId = null, pla
 
   return (
     <div className="card game">
+      {/* fixed player panels */}
+      <div className={`player-fixed left ${turn === 0 ? 'current' : ''}`} aria-hidden>
+        <div className="player-name">{players[0] || 'Player 1'}</div>
+        <div className={`clock ${clocks[0] <= 10000 ? 'low' : ''}`}>{fmt(clocks[0])}</div>
+      </div>
+      <div className={`player-fixed right ${turn === 1 ? 'current' : ''}`} aria-hidden>
+        <div className="player-name">{players[1] || 'Player 2'}</div>
+        <div className={`clock ${clocks[1] <= 10000 ? 'low' : ''}`}>{fmt(clocks[1])}</div>
+      </div>
       <div className="header">
         <div>
           <h2>NIM — Local Play</h2>
