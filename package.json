@@ -2,6 +2,6 @@
   "name": "nim-game",
   "private": true,
   "scripts": {
-    "build": "npm --prefix frontend install && npm --prefix frontend run build"
+    "build": "sh scripts/vercel-build.sh"
   }
 }
