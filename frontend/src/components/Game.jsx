@@ -120,13 +120,17 @@ export default function Game({ mode = 'local', socket = null, roomId = null, pla
       if (room.piles) setPiles(room.piles)
       if (typeof room.currentTurn === 'number') setTurn(room.currentTurn % (room.turnOrder?.length || 2))
       if (room.status) setStatus(room.status)
-      if (room.winner) setWinner(room.winner === socket.id ? 0 : 1)
-      // update players list
-      const playerNames = Object.values(room.players || {}).map(p => p.name || 'Player')
-      // ensure players has two entries
+      // map winner socket id to player index based on turnOrder
+      if (room.winner) {
+        const idx = room.turnOrder?.indexOf(room.winner)
+        setWinner(typeof idx === 'number' && idx >= 0 ? idx : null)
+      }
+      // update players list based on turnOrder
+      const playerNames = (room.turnOrder || []).map(id => (room.players && room.players[id] && room.players[id].name) || 'Player')
       if (playerNames.length === 1) playerNames.push('Waiting...')
-      // we do not overwrite players prop directly; update only if local array is placeholder
-      // set players if empty or placeholder
+      // update displayed player names by mutating DOM via state where appropriate
+      // (we'll rely on props.players passed from App, but if not present, set local fallback)
+      // no direct state for players here; parent `App` maintains player list
     }
     const onError = (msg) => {
       console.warn('server error:', msg)

@@ -17,10 +17,9 @@ export default function Lobby({ onStart }) {
 
   const createRoom = () => {
     if (!p1) return alert('Enter your name')
-    // generate a short room id
-    const id = Math.random().toString(36).slice(2, 9)
-    setRoomId(id)
-    onStart({ mode: 'online', create: true, roomId: id, name: p1 })
+    // create room on server; server will assign roomId (socket.id)
+    setRoomId('')
+    onStart({ mode: 'online', create: true, name: p1, piles: piles, minutes: minutes })
   }
 
   const joinRoom = () => {
