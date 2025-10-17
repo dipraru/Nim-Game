@@ -16,7 +16,7 @@ function generateUniquePiles(count, min = 4, max = 18) {
   return Array.from(set)
 }
 
-export default function Game({ mode = 'local', socket = null, roomId = null, players = [], pilesCount = 3, matchMinutes = 6, onReset }) {
+export default function Game({ players = [], pilesCount = 3, matchMinutes = 6, onReset }) {
   const [piles, setPiles] = useState(() => generateUniquePiles(pilesCount, 4, 18))
   const [turn, setTurn] = useState(0) // 0 = players[0], 1 = players[1]
   const [status, setStatus] = useState('playing')
@@ -111,38 +111,7 @@ export default function Game({ mode = 'local', socket = null, roomId = null, pla
     turnRef.current = turn
   }, [turn])
 
-  // socket listeners for online play
-  useEffect(() => {
-    if (mode !== 'online' || !socket) return
-    const onRoom = ({ roomId, room }) => {
-      if (!room) return
-      // sync local state with server room
-      if (room.piles) setPiles(room.piles)
-      if (typeof room.currentTurn === 'number') setTurn(room.currentTurn % (room.turnOrder?.length || 2))
-      if (room.status) setStatus(room.status)
-      // map winner socket id to player index based on turnOrder
-      if (room.winner) {
-        const idx = room.turnOrder?.indexOf(room.winner)
-        setWinner(typeof idx === 'number' && idx >= 0 ? idx : null)
-      }
-      // update players list based on turnOrder
-      const playerNames = (room.turnOrder || []).map(id => (room.players && room.players[id] && room.players[id].name) || 'Player')
-      if (playerNames.length === 1) playerNames.push('Waiting...')
-      // update displayed player names by mutating DOM via state where appropriate
-      // (we'll rely on props.players passed from App, but if not present, set local fallback)
-      // no direct state for players here; parent `App` maintains player list
-    }
-    const onError = (msg) => {
-      console.warn('server error:', msg)
-      alert(msg)
-    }
-    socket.on('room_update', onRoom)
-    socket.on('error_msg', onError)
-    return () => {
-      socket.off('room_update', onRoom)
-      socket.off('error_msg', onError)
-    }
-  }, [mode, socket])
+  // no online socket logic in local-only mode
 
   // Tick timer while playing. Use refs to avoid stale closures and ensure interval
   // starts immediately on status change or restart.
